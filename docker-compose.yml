@@ -1,0 +1,54 @@
+services:
+  nats-server:
+    image: nats:latest
+    ports:
+      - 8222:8222
+
+  client-gateway:
+    build: ./client-gateway
+    ports:
+      - 3000:3000
+    volumes:
+      - ./client-gateway/src:/usr/src/app/src
+    command: pnpm run start:dev
+    environment:
+      - PORT=3000
+      - NATS_SERVERS=nats://nats-server:4222
+
+  products:
+    build: ./products-ms
+    ports:
+      - 8080:8080
+    volumes:
+      - ./products-ms/src:/usr/src/app/src
+    command: pnpm run start:dev
+    environment:
+      - PORT=8080
+      - NATS_SERVERS=nats://nats-server:4222
+      - DATABASE_URL=file:./dev.db
+
+  orders:
+    depends_on:
+      - orders-db
+    build: ./orders-ms
+    ports:
+      - 8091:8091
+    volumes:
+      - ./orders-ms/src:/usr/src/app/src
+    command: pnpm run start:dev
+    environment:
+      - PORT=8091
+      - NATS_SERVERS=nats://nats-server:4222
+      - DATABASE_URL=postgresql://camilog:123456789@orders-db:5432/orders_ms?schema=public
+
+  orders-db:
+    image: postgres:16.1
+    restart: always
+    volumes:
+      - ./orders-ms/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=orders_ms
+      - POSTGRES_USER=camilog
+      - POSTGRES_PASSWORD=123456789
+    ports:
+      - "5432:5432"
