@@ -3,6 +3,7 @@ services:
     image: nats:latest
     ports:
       - 8222:8222
+      - 4222:4222
 
   client-gateway:
     build: ./client-gateway
@@ -27,6 +28,18 @@ services:
       - NATS_SERVERS=nats://nats-server:4222
       - DATABASE_URL=file:./dev.db
 
+  orders-db:
+    image: postgres:16.1
+    restart: always
+    volumes:
+      - ./orders-ms/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=orders_ms
+      - POSTGRES_USER=camilog
+      - POSTGRES_PASSWORD=123456789
+    ports:
+      - "5432:5432"
+
   orders:
     depends_on:
       - orders-db
@@ -41,18 +54,6 @@ services:
       - NATS_SERVERS=nats://nats-server:4222
       - DATABASE_URL=postgresql://camilog:123456789@orders-db:5432/orders_ms?schema=public
 
-  orders-db:
-    image: postgres:16.1
-    restart: always
-    volumes:
-      - ./orders-ms/postgres:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=orders_ms
-      - POSTGRES_USER=camilog
-      - POSTGRES_PASSWORD=123456789
-    ports:
-      - "5432:5432"
-
   payment:
     build: ./payment-ms
     ports:
@@ -66,3 +67,17 @@ services:
       - STRIPE_ENDPOINT_SECRET=${STRIPE_ENDPOINT_SECRET}
       - STRIPE_SUCCESS_URL=${STRIPE_SUCCESS_URL}
       - STRIPE_CANCEL_URL=${STRIPE_CANCEL_URL}
+      - NATS_SERVERS=nats://nats-server:4222
+
+  auth:
+    build: ./auth-ms
+    ports:
+      - 3020:3020
+    volumes:
+      - ./auth-ms/src:/usr/src/app/src
+    command: pnpm run start:dev
+    environment:
+      - PORT=3020
+      - NATS_SERVERS=nats://nats-server:4222
+      - DATABASE_URL=mongodb+srv://camilog90:CamiloG90@camilog-db.ouq1u.mongodb.net/AuthMSDB
+      - SECRET_JWT=misecretparamitoken123

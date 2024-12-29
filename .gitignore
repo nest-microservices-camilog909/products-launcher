@@ -2,5 +2,6 @@ client-gateway/
 products-ms/
 payment-ms/
 orders-ms/
+auth-ms/
 
 .env
